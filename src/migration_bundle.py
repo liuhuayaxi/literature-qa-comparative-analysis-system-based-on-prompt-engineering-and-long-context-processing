@@ -15,6 +15,7 @@ from .config import AppConfig
 BUNDLE_SCHEMA_VERSION = 1
 BUNDLE_MANIFEST_NAME = "migration_bundle_manifest.json"
 _PAYLOAD_PREFIX = "payload"
+_EXCLUDED_SUFFIXES = {".pdf"}
 
 
 def collect_migration_roots(config: AppConfig) -> list[Path]:
@@ -83,6 +84,8 @@ def export_migration_bundle(
                 continue
             for file_path in _iter_root_files(root_path):
                 relative_path = file_path.resolve(strict=False).relative_to(project_root)
+                if _should_skip_bundle_file(relative_path):
+                    continue
                 archive_name = f"{_PAYLOAD_PREFIX}/{relative_path.as_posix()}"
                 archive.write(file_path, archive_name)
                 size = file_path.stat().st_size
@@ -101,7 +104,7 @@ def export_migration_bundle(
             "files": entries,
             "file_count": len(entries),
             "total_size_bytes": total_bytes,
-            "excluded_categories": ["logs"],
+            "excluded_categories": ["logs", "pdf"],
         }
         archive.writestr(BUNDLE_MANIFEST_NAME, json.dumps(manifest, ensure_ascii=False, indent=2))
 
@@ -254,6 +257,8 @@ def _extract_payload(project_root: Path, bundle_path: Path) -> None:
             if not relative_name:
                 continue
             relative_path = _validate_relative_path(relative_name)
+            if _should_skip_bundle_file(relative_path):
+                continue
             target_path = project_root / relative_path
             if member.is_dir():
                 target_path.mkdir(parents=True, exist_ok=True)
@@ -275,3 +280,7 @@ def _validate_relative_path(value: str) -> Path:
 
 def _path_contains(parent: Path, child: Path) -> bool:
     return child == parent or parent in child.parents
+
+
+def _should_skip_bundle_file(relative_path: Path) -> bool:
+    return relative_path.suffix.lower() in _EXCLUDED_SUFFIXES

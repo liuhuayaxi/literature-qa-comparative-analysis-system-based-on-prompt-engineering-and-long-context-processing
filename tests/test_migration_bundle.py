@@ -37,7 +37,7 @@ class MigrationBundleTests(unittest.TestCase):
 
             self.assertEqual(roots, {"config", "storage", "data/raw", "reports"})
 
-    def test_export_bundle_includes_runtime_data_and_excludes_logs(self) -> None:
+    def test_export_bundle_excludes_logs_and_pdf_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             config = self._make_config(root, chat_model="demo-chat")
@@ -47,6 +47,8 @@ class MigrationBundleTests(unittest.TestCase):
             (config.cache_dir / "analysis" / "demo.json").write_text('{"ok": true}', encoding="utf-8")
             (config.data_root / "demo-course" / "lectures" / "demo.pdf").parent.mkdir(parents=True, exist_ok=True)
             (config.data_root / "demo-course" / "lectures" / "demo.pdf").write_bytes(b"%PDF-demo")
+            (config.data_root / "demo-course" / "notes" / "demo.txt").parent.mkdir(parents=True, exist_ok=True)
+            (config.data_root / "demo-course" / "notes" / "demo.txt").write_text("demo text", encoding="utf-8")
             (config.reports_dir / "demo.md").write_text("# report", encoding="utf-8")
             config.runtime_api_log_path.write_text("runtime log", encoding="utf-8")
             config.vector_operation_log_path.write_text("vector log", encoding="utf-8")
@@ -66,8 +68,9 @@ class MigrationBundleTests(unittest.TestCase):
             self.assertIn("payload/config/app_config.json", names)
             self.assertIn("payload/storage/app_state.db", names)
             self.assertIn("payload/storage/chroma/chroma.sqlite3", names)
-            self.assertIn("payload/data/raw/demo-course/lectures/demo.pdf", names)
+            self.assertIn("payload/data/raw/demo-course/notes/demo.txt", names)
             self.assertIn("payload/reports/demo.md", names)
+            self.assertNotIn("payload/data/raw/demo-course/lectures/demo.pdf", names)
             self.assertNotIn("payload/logs/runtime_api_traffic.jsonl", names)
             self.assertNotIn("payload/logs/runtime_vector_operations.jsonl", names)
 
@@ -86,6 +89,14 @@ class MigrationBundleTests(unittest.TestCase):
                 exist_ok=True,
             )
             (source_config.data_root / "source-course" / "lectures" / "source.pdf").write_bytes(b"source pdf")
+            (source_config.data_root / "source-course" / "notes" / "source.txt").parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (source_config.data_root / "source-course" / "notes" / "source.txt").write_text(
+                "source text",
+                encoding="utf-8",
+            )
             (source_config.reports_dir / "source.md").write_text("source report", encoding="utf-8")
             source_bundle = Path(export_migration_bundle(source_config, bundle_name="source_bundle")["bundle_path"])
 
@@ -99,6 +110,11 @@ class MigrationBundleTests(unittest.TestCase):
                 exist_ok=True,
             )
             (target_config.data_root / "target-course" / "lectures" / "stale.pdf").write_bytes(b"stale pdf")
+            (target_config.data_root / "target-course" / "notes" / "stale.txt").parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (target_config.data_root / "target-course" / "notes" / "stale.txt").write_text("stale text", encoding="utf-8")
 
             result = import_migration_bundle(target_config, source_bundle)
             backup_path = Path(result["backup_path"])
@@ -113,9 +129,11 @@ class MigrationBundleTests(unittest.TestCase):
                 '{"fresh": true}',
             )
             self.assertFalse((target_config.data_root / "target-course" / "lectures" / "stale.pdf").exists())
+            self.assertFalse((target_config.data_root / "source-course" / "lectures" / "source.pdf").exists())
+            self.assertFalse((target_config.data_root / "target-course" / "notes" / "stale.txt").exists())
             self.assertEqual(
-                (target_config.data_root / "source-course" / "lectures" / "source.pdf").read_bytes(),
-                b"source pdf",
+                (target_config.data_root / "source-course" / "notes" / "source.txt").read_text(encoding="utf-8"),
+                "source text",
             )
             self.assertEqual(
                 (target_config.reports_dir / "source.md").read_text(encoding="utf-8"),
@@ -125,7 +143,31 @@ class MigrationBundleTests(unittest.TestCase):
             backup_manifest = inspect_migration_bundle(backup_path)
             self.assertIn("storage", backup_manifest["roots"])
             with zipfile.ZipFile(backup_path, "r") as archive:
-                self.assertIn("payload/storage/cache/analysis/stale.json", set(archive.namelist()))
+                names = set(archive.namelist())
+            self.assertIn("payload/storage/cache/analysis/stale.json", names)
+            self.assertIn("payload/data/raw/target-course/notes/stale.txt", names)
+            self.assertNotIn("payload/data/raw/target-course/lectures/stale.pdf", names)
+
+    def test_import_bundle_skips_pdf_from_legacy_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as source_tmpdir, tempfile.TemporaryDirectory() as target_tmpdir:
+            source_root = Path(source_tmpdir)
+            target_root = Path(target_tmpdir)
+
+            source_config = self._make_config(source_root, chat_model="source-model")
+            (source_config.data_root / "source-course" / "lectures" / "legacy.pdf").parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (source_config.data_root / "source-course" / "lectures" / "legacy.pdf").write_bytes(b"legacy pdf")
+            bundle_path = Path(export_migration_bundle(source_config, bundle_name="legacy_bundle")["bundle_path"])
+
+            with zipfile.ZipFile(bundle_path, "a", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("payload/data/raw/source-course/lectures/legacy.pdf", b"legacy pdf from old bundle")
+
+            target_config = self._make_config(target_root, chat_model="target-model")
+            import_migration_bundle(target_config, bundle_path)
+
+            self.assertFalse((target_config.data_root / "source-course" / "lectures" / "legacy.pdf").exists())
 
 
 if __name__ == "__main__":
