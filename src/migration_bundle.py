@@ -16,7 +16,7 @@ from .config import AppConfig
 BUNDLE_SCHEMA_VERSION = 1
 BUNDLE_MANIFEST_NAME = "migration_bundle_manifest.json"
 _PAYLOAD_PREFIX = "payload"
-_EXCLUDED_SUFFIXES = {".pdf"}
+_EXPORT_EXCLUDED_SUFFIXES = {".pdf"}
 
 
 def collect_migration_roots(config: AppConfig) -> list[Path]:
@@ -85,7 +85,7 @@ def export_migration_bundle(
                 continue
             for file_path in _iter_root_files(root_path):
                 relative_path = file_path.resolve(strict=False).relative_to(project_root)
-                if _should_skip_bundle_file(relative_path):
+                if _should_skip_export_bundle_file(relative_path):
                     continue
                 archive_name = f"{_PAYLOAD_PREFIX}/{relative_path.as_posix()}"
                 archive.write(file_path, archive_name)
@@ -258,7 +258,7 @@ def _extract_payload(project_root: Path, bundle_path: Path) -> None:
             if not relative_name:
                 continue
             relative_path = _validate_relative_path(relative_name)
-            if _should_skip_bundle_file(relative_path):
+            if _should_skip_import_bundle_file(relative_path):
                 continue
             target_path = project_root / relative_path
             if member.is_dir():
@@ -283,8 +283,16 @@ def _path_contains(parent: Path, child: Path) -> bool:
     return child == parent or parent in child.parents
 
 
-def _should_skip_bundle_file(relative_path: Path) -> bool:
-    return relative_path.suffix.lower() in _EXCLUDED_SUFFIXES
+def _should_skip_export_bundle_file(relative_path: Path) -> bool:
+    return _is_logs_path(relative_path) or relative_path.suffix.lower() in _EXPORT_EXCLUDED_SUFFIXES
+
+
+def _should_skip_import_bundle_file(relative_path: Path) -> bool:
+    return _is_logs_path(relative_path)
+
+
+def _is_logs_path(relative_path: Path) -> bool:
+    return bool(relative_path.parts) and relative_path.parts[0] == "logs"
 
 
 def _remove_directory_with_fallback(target: Path) -> None:

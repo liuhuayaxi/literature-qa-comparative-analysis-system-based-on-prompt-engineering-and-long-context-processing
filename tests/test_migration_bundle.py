@@ -152,7 +152,7 @@ class MigrationBundleTests(unittest.TestCase):
             self.assertIn("payload/data/raw/target-course/notes/stale.txt", names)
             self.assertNotIn("payload/data/raw/target-course/lectures/stale.pdf", names)
 
-    def test_import_bundle_skips_pdf_from_legacy_bundle(self) -> None:
+    def test_import_bundle_restores_pdf_from_legacy_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as source_tmpdir, tempfile.TemporaryDirectory() as target_tmpdir:
             source_root = Path(source_tmpdir)
             target_root = Path(target_tmpdir)
@@ -171,7 +171,26 @@ class MigrationBundleTests(unittest.TestCase):
             target_config = self._make_config(target_root, chat_model="target-model")
             import_migration_bundle(target_config, bundle_path)
 
-            self.assertFalse((target_config.data_root / "source-course" / "lectures" / "legacy.pdf").exists())
+            self.assertEqual(
+                (target_config.data_root / "source-course" / "lectures" / "legacy.pdf").read_bytes(),
+                b"legacy pdf from old bundle",
+            )
+
+    def test_import_bundle_still_skips_logs_from_legacy_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as source_tmpdir, tempfile.TemporaryDirectory() as target_tmpdir:
+            source_root = Path(source_tmpdir)
+            target_root = Path(target_tmpdir)
+
+            source_config = self._make_config(source_root, chat_model="source-model")
+            bundle_path = Path(export_migration_bundle(source_config, bundle_name="legacy_with_logs")["bundle_path"])
+
+            with zipfile.ZipFile(bundle_path, "a", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("payload/logs/runtime_api_traffic.jsonl", b"log from old bundle")
+
+            target_config = self._make_config(target_root, chat_model="target-model")
+            import_migration_bundle(target_config, bundle_path)
+
+            self.assertFalse(target_config.runtime_api_log_path.exists())
 
     def test_clear_existing_roots_handles_enotempty_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
