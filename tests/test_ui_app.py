@@ -11,6 +11,7 @@ from src.config import AppConfig
 from src.models import DocumentRecord, DocumentExtractionResult, ExtractedFieldValue
 from src.ui_app import (
     build_app,
+    _resolve_workspace_bundle_path,
     _render_manage_detail_card,
     _render_manage_details_html,
     _render_markdown_html,
@@ -58,6 +59,31 @@ class UiAppRenderTests(unittest.TestCase):
 
             self.assertIn("恢复备份", button_descriptions)
             self.assertNotIn("导出迁移包", button_descriptions)
+
+    def test_resolve_workspace_bundle_path_strips_duplicated_project_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo-repo"
+            bundle_path = project_root / "release" / "migration_bundles" / "demo.zip"
+            bundle_path.parent.mkdir(parents=True, exist_ok=True)
+            bundle_path.write_bytes(b"zip")
+
+            resolved = _resolve_workspace_bundle_path(
+                project_root,
+                "demo-repo/release/migration_bundles/demo.zip",
+            )
+
+            self.assertEqual(resolved, bundle_path.resolve(strict=False))
+
+    def test_resolve_workspace_bundle_path_finds_bundle_by_filename(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir) / "demo-repo"
+            bundle_path = project_root / "release" / "migration_backups" / "backup.zip"
+            bundle_path.parent.mkdir(parents=True, exist_ok=True)
+            bundle_path.write_bytes(b"zip")
+
+            resolved = _resolve_workspace_bundle_path(project_root, "backup.zip")
+
+            self.assertEqual(resolved, bundle_path.resolve(strict=False))
 
     def test_manage_details_html_paginates_file_cards(self) -> None:
         records = [_record(index) for index in range(12)]

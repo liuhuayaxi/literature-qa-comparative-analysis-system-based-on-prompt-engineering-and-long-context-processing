@@ -1663,10 +1663,7 @@ def build_app(config: AppConfig):
         raw_path = migration_bundle_path_input.value.strip()
         if not raw_path:
             raise ValueError("请先上传迁移包，或填写工作区中的 zip 路径。")
-        candidate = Path(raw_path).expanduser()
-        if not candidate.is_absolute():
-            candidate = config.project_root / candidate
-        return candidate.resolve(strict=False)
+        return _resolve_workspace_bundle_path(config.project_root, raw_path)
 
     def _render_migration_status(title: str, result: dict[str, object], *, note: str = "") -> str:
         roots = "、".join(str(item) for item in result.get("roots", []) if str(item).strip()) or "-"
@@ -3673,10 +3670,7 @@ def _build_recovery_app(widgets, config: AppConfig):
         raw_path = restore_bundle_path_input.value.strip()
         if not raw_path:
             raise ValueError("请先上传备份包，或填写工作区中的 zip 路径。")
-        candidate = Path(raw_path).expanduser()
-        if not candidate.is_absolute():
-            candidate = (config.project_root / candidate).resolve(strict=False)
-        return candidate
+        return _resolve_workspace_bundle_path(config.project_root, raw_path)
 
     def _render_restore_status(title: str, result: dict[str, object], *, note: str = "") -> str:
         roots = ", ".join(str(item) for item in result.get("roots", [])) or "-"
@@ -3799,6 +3793,33 @@ def _normalize_upload_value(value):
     if isinstance(value, dict):
         return list(value.values())
     return list(value)
+
+
+def _resolve_workspace_bundle_path(project_root: Path, raw_path: str) -> Path:
+    normalized = raw_path.strip()
+    candidate = Path(normalized).expanduser()
+    tried: list[Path] = []
+
+    def add_path(path: Path) -> None:
+        resolved = path.resolve(strict=False)
+        if resolved not in tried:
+            tried.append(resolved)
+
+    if candidate.is_absolute():
+        add_path(candidate)
+    else:
+        add_path(project_root / candidate)
+        if candidate.parts and candidate.parts[0] == project_root.name and len(candidate.parts) > 1:
+            add_path(project_root / Path(*candidate.parts[1:]))
+        if len(candidate.parts) == 1:
+            add_path(project_root / "release" / "migration_bundles" / candidate.name)
+            add_path(project_root / "release" / "migration_backups" / candidate.name)
+            add_path(project_root / candidate.name)
+
+    for resolved in tried:
+        if resolved.exists():
+            return resolved
+    return tried[0]
 
 
 def _schedule(coroutine):
