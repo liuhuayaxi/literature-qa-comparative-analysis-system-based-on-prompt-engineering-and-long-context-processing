@@ -1,0 +1,166 @@
+// ============================================================
+// app_config.json 配置说明（JSONC 注释版，仅供参考，不可直接作为 JSON 加载）
+// ============================================================
+{
+    // ──────────────────── 模型 API 凭证 ────────────────────
+    // 默认 OpenAI 兼容 API 密钥（嵌入 + 对话共用，被下面更细粒度的 key 覆盖时不生效）
+    "OPENAI_API_KEY": "sk-xxx",
+    // 默认 API 基础地址（这里使用 SiliconFlow 平台）
+    "OPENAI_BASE_URL": "https://api.siliconflow.cn/v1",
+    // ──────────────────── 对话模型配置 ────────────────────
+    // 对话（Chat）专用 API 密钥，优先级高于 OPENAI_API_KEY
+    "OPENAI_CHAT_API_KEY": "sk-xxx",
+    // 对话模型的 API 基础地址
+    "OPENAI_CHAT_BASE_URL": "https://api.siliconflow.cn/v1",
+    // 对话模型名称（Qwen3-Coder-30B-A3B-Instruct，MoE 架构，活跃参数 3B）
+    "OPENAI_CHAT_MODEL": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    // ──────────────────── 嵌入模型配置 ────────────────────
+    // 嵌入（Embedding）专用 API 密钥
+    "OPENAI_EMBEDDING_API_KEY": "sk-xxx",
+    // 嵌入模型的 API 基础地址
+    "OPENAI_EMBEDDING_BASE_URL": "https://api.siliconflow.cn/v1",
+    // 嵌入模型名称（Qwen3-Embedding-8B）
+    "OPENAI_EMBEDDING_MODEL": "Qwen/Qwen3-Embedding-8B",
+    // ──────────────────── 应用默认行为 ────────────────────
+    // 默认语言："auto" 自动检测 | "zh" 中文 | "en" 英文
+    "APP_DEFAULT_LANGUAGE": "auto",
+    // 默认记忆模式："persistent" 持久化(跨会话) | "session" 仅会话内
+    "APP_DEFAULT_MEMORY_MODE": "persistent",
+    // 默认流式输出模式："stream" 逐 token 流式 | "batch" 一次性返回
+    "APP_DEFAULT_STREAMING_MODE": "stream",
+    // ──────────────────── 检索参数 ────────────────────
+    // 检索返回的最终 top-K 结果数
+    "APP_RETRIEVAL_TOP_K": "15",
+    // 检索初始候选数（先取 fetch_k 个，再经重排序保留 top_k 个）
+    "APP_RETRIEVAL_FETCH_K": "30",
+    // ──────────────────── 超时设置 ────────────────────
+    // 非流式对话请求的超时时间（秒）
+    "APP_CHAT_TIMEOUT_SECONDS": "120",
+    // 流式对话的整体请求超时时间（秒）
+    "APP_CHAT_STREAM_REQUEST_TIMEOUT_SECONDS": "300",
+    // 流式对话：等待首个 token 的超时时间（秒）
+    "APP_CHAT_STREAM_FIRST_TOKEN_TIMEOUT_SECONDS": "120",
+    // 流式对话：两个 token 之间的空闲超时时间（秒）
+    "APP_CHAT_STREAM_IDLE_TIMEOUT_SECONDS": "120",
+    // 嵌入请求的超时时间（秒）
+    "APP_EMBEDDING_TIMEOUT_SECONDS": "45",
+    // ──────────────────── API 重试策略 ────────────────────
+    // 普通 API 错误时的重试次数
+    "APP_API_RETRY_ATTEMPTS": "3",
+    // 指数退避的最小等待秒数
+    "APP_API_RETRY_BACKOFF_MIN_SECONDS": "1",
+    // 指数退避的最大等待秒数
+    "APP_API_RETRY_BACKOFF_MAX_SECONDS": "8",
+    // 遇到限流 (429) 时是否无限重试（true = 一直等到成功）
+    "APP_RATE_LIMIT_RETRY_FOREVER": "true",
+    // 限流重试的最大次数（仅在 RETRY_FOREVER=false 时生效）
+    "APP_RATE_LIMIT_RETRY_ATTEMPTS": "5",
+    // 限流重试的初始延迟秒数
+    "APP_RATE_LIMIT_RETRY_DELAY_SECONDS": "1",
+    // ──────────────────── 并发控制 ────────────────────
+    // 对话模型的并发请求数上限（信号量）
+    "APP_CHAT_PROVIDER_CONCURRENCY": "1",
+    // 嵌入模型的并发请求数上限
+    "APP_EMBEDDING_PROVIDER_CONCURRENCY": "1",
+    // ──────────────────── 向量存储 ────────────────────
+    // 是否允许在远端向量库不可用时回退到本地向量库
+    "APP_ALLOW_LOCAL_VECTOR_FALLBACK": "false",
+    // 向量化写入时每批的文档数
+    "APP_VECTOR_UPSERT_BATCH_SIZE": "4",
+    // ──────────────────── 日志路径 ────────────────────
+    // 运行时 API 调用流量日志（JSONL 格式）
+    "APP_RUNTIME_API_LOG_PATH": "logs/runtime_api_traffic.jsonl",
+    // 测试 API 调用流量日志
+    "APP_TEST_API_LOG_PATH": "logs/test_api_traffic.jsonl",
+    // 向量操作日志
+    "APP_VECTOR_OPERATION_LOG_PATH": "logs/runtime_vector_operations.jsonl",
+    // ──────────────────── 文档切片参数 ────────────────────
+    // 每个切片的目标大小（字符数）
+    "APP_CHUNK_SIZE": "2000",
+    // 相邻切片之间的重叠字符数（保留上下文连贯性）
+    "APP_CHUNK_OVERLAP": "250",
+    // 是否将过小的切片自动合并到相邻切片
+    "APP_MERGE_SMALL_CHUNKS": "true",
+    // 合并阈值：低于此字符数的切片会被合并
+    "APP_MIN_CHUNK_SIZE": "1000",
+    // ──────────────────── 批量分析 ────────────────────
+    // 批量对比分析时的最大并发文档数
+    "APP_BATCH_CONCURRENCY": "5",
+    // 是否启用分析结果缓存（避免重复调用模型）
+    "APP_ENABLE_RESULT_CACHE": "true",
+    // ──────────────────── 存储路径 ────────────────────
+    // SQLite 数据库路径（存储会话、历史等持久化数据）
+    "APP_DB_PATH": "storage/app_state.db",
+    // Chroma 向量库的存储目录
+    "APP_VECTOR_DIR": "storage/chroma",
+    // 分析结果缓存目录
+    "APP_CACHE_DIR": "storage/cache",
+    // 批量对比的断点续传存储目录
+    "APP_ANALYSIS_CHECKPOINT_DIR": "storage/analysis_checkpoints",
+    // 字段抽取模板的 JSON 存储路径
+    "APP_FIELD_TEMPLATE_PATH": "storage/field_templates.json",
+    // 知识库状态（已导入的文件列表等）的 JSON 路径
+    "APP_KNOWLEDGE_BASE_STATE_PATH": "storage/knowledge_base_state.json",
+    // ──────────────────── 引用 & 重排序 ────────────────────
+    // 每次回答最多附加的引用条目数
+    "APP_CITATION_LIMIT": "8",
+    // 是否启用本地多维度重排序（综合向量 + 关键词 + 短语 + 元数据评分）
+    "APP_ENABLE_RERANK": "true",
+    // 重排序后保留的最低综合分数阈值
+    "APP_RERANK_MIN_SCORE": "0.28",
+    // 不论分数多低，至少保留多少条检索结果
+    "APP_RERANK_MIN_KEEP": "1",
+    // 重排序权重：向量相似度占比
+    "APP_RERANK_WEIGHT_VECTOR": "0.45",
+    // 重排序权重：关键词匹配占比
+    "APP_RERANK_WEIGHT_KEYWORD": "0.25",
+    // 重排序权重：短语匹配占比
+    "APP_RERANK_WEIGHT_PHRASE": "0.20",
+    // 重排序权重：元数据（文件类型等）占比
+    "APP_RERANK_WEIGHT_METADATA": "0.10",
+    // ──────────────────── 查询改写 ────────────────────
+    // 是否启用查询改写（将多轮对话中的省略指代补全为独立检索语句）
+    "APP_ENABLE_QUERY_REWRITE": "true",
+    // 是否显示知识库页底部的“迁移与备份”区域
+    "APP_ENABLE_MIGRATION_UI": "true",
+    // ──────────────────── Prompt 模板（中文） ────────────────────
+    // 问答系统提示词（中文）：定义助手角色和回答规则
+    "APP_QA_SYSTEM_PROMPT_ZH": "...(见原文)",
+    // 查询改写指令（中文）：将用户问题改写为独立检索查询
+    "APP_QUERY_REWRITE_INSTRUCTION_ZH": "...(见原文)",
+    // 回答格式指令（中文）：控制输出格式，不输出来源标题
+    "APP_QA_ANSWER_INSTRUCTION_ZH": "...(见原文)",
+    // 单文档分析提示词（中文）：输出 JSON 格式的结构化分析
+    "APP_SINGLE_ANALYSIS_PROMPT_ZH": "...(见原文)",
+    // 批量对比报告提示词（中文）：生成多文档对比 Markdown 报告
+    "APP_COMPARE_REPORT_PROMPT_ZH": "...(见原文)",
+    // 数据字段抽取提示词（中文）：从切片中抽取结构化字段
+    "APP_DATA_EXTRACTION_PROMPT_ZH": "...(见原文)",
+    // 表格总结提示词（中文）：基于抽取结果生成对比总结
+    "APP_TABLE_SUMMARY_PROMPT_ZH": "...(见原文)",
+    // ──────────────────── Prompt 模板（英文） ────────────────────
+    "APP_SINGLE_ANALYSIS_PROMPT_EN": "...(见原文)",
+    "APP_COMPARE_REPORT_PROMPT_EN": "...(见原文)",
+    "APP_DATA_EXTRACTION_PROMPT_EN": "...(见原文)",
+    "APP_TABLE_SUMMARY_PROMPT_EN": "...(见原文)",
+    "APP_QA_SYSTEM_PROMPT_EN": "...(见原文)",
+    "APP_QUERY_REWRITE_INSTRUCTION_EN": "...(见原文)",
+    "APP_QA_ANSWER_INSTRUCTION_EN": "...(见原文)",
+    // ──────────────────── 长上下文管理 ────────────────────
+    // 模型上下文窗口大小（token 数）
+    "APP_MODEL_CONTEXT_WINDOW": "32000",
+    // 预留给模型回答生成的 token 数（从窗口中扣除）
+    "APP_ANSWER_TOKEN_RESERVE": "6000",
+    // 压缩历史时保留的最近对话轮数（不压缩）
+    "APP_RECENT_HISTORY_TURNS": "6",
+    // 长文档滑窗摘要：每个窗口的 token 数
+    "APP_LONG_CONTEXT_WINDOW_TOKENS": "2400",
+    // 长文档滑窗摘要：相邻窗口的重叠 token 数
+    "APP_LONG_CONTEXT_WINDOW_OVERLAP_TOKENS": "240",
+    // 递归摘要的目标压缩 token 数（最终交给分析模型的上下文大小）
+    "APP_RECURSIVE_SUMMARY_TARGET_TOKENS": "1400",
+    // 递归摘要每轮合并的摘要批次大小
+    "APP_RECURSIVE_SUMMARY_BATCH_SIZE": "4",
+    // 历史压缩时单轮对话的 token 上限（超过则截断）
+    "APP_PROMPT_COMPRESSION_TURN_TOKEN_LIMIT": "180"
+}

@@ -1,0 +1,17 @@
+.DS_Store
+.idea/
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+__pycache__/
+*.pyc
+
+logs/
+data/
+storage/
+reports/
+output/
+tmp/
+release/
+
+config/app_config.json
