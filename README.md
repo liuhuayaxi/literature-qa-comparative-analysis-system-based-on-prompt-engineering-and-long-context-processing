@@ -8,7 +8,6 @@ Included:
 - `scripts/`
 - `notebooks/course_research_assistant.ipynb`
 - `config/app_config.example.json`
-- `config/app_config.json` (sanitized template copy)
 - `config/app_config_annotated.jsonc`
 - `requirements.txt`
 
@@ -25,6 +24,7 @@ Quick start:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp config/app_config.example.json config/app_config.json
 ```
 
 Then fill in API settings in `config/app_config.json` and open:
