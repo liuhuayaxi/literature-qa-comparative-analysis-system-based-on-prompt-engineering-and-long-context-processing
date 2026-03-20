@@ -14,17 +14,6 @@ This repository contains the source-only release of a notebook-based literature 
 - `config/app_config_annotated.jsonc`
 - `requirements.txt`
 
-## Excluded
-
-This public source release does not include:
-
-- runtime logs
-- imported PDFs and raw data files
-- vector store, cache, and checkpoint data
-- reports and generated outputs
-- local virtual environment and temporary files
-- real API credentials
-
 ## Main Capabilities
 
 - notebook-based literature QA interface
@@ -50,14 +39,3 @@ jupyter notebook notebooks/course_research_assistant.ipynb
 ```
 
 Open `notebooks/course_research_assistant.ipynb` and run the notebook cells to start the UI.
-
-## Tests
-
-```bash
-pytest -q
-```
-
-## Notes
-
-- `config/app_config.json` is intentionally excluded from version control by `.gitignore`.
-- If you need local runtime data migration between devices, use the migration tools in the notebook UI after configuring the application.
