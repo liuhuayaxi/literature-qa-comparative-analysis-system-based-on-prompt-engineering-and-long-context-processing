@@ -14,16 +14,6 @@
 - `config/app_config_annotated.jsonc`
 - `requirements.txt`
 
-## 不包含内容
-
-这个公开源码版本不包含以下内容：
-
-- 运行日志
-- 导入的 PDF 和原始数据文件
-- 向量库、缓存和断点数据
-- 报告与生成输出
-- 本地虚拟环境与临时文件
-- 真实 API 密钥
 
 ## 主要功能
 
@@ -51,11 +41,6 @@ jupyter notebook notebooks/course_research_assistant.ipynb
 
 打开 `notebooks/course_research_assistant.ipynb`，依次运行其中的单元即可启动界面。
 
-## 测试
-
-```bash
-pytest -q
-```
 
 ## 说明
 
