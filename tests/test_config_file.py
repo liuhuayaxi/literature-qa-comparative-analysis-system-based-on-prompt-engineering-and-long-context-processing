@@ -172,6 +172,7 @@ class ConfigFileTests(unittest.TestCase):
             resolved_root = config.project_root
 
             self.assertTrue(config_path.exists())
+            self.assertFalse(config.enable_migration_ui)
             self.assertTrue((resolved_root / "data/raw/lunwen/papers/demo.txt").exists())
             self.assertTrue((resolved_root / "reports/lunwen_progress.md").exists())
             self.assertTrue((resolved_root / "logs/runtime_api_traffic.jsonl").exists())

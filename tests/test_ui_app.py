@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
+from src.app_utils import update_json_config_file
+from src.config import AppConfig
 from src.models import DocumentRecord, DocumentExtractionResult, ExtractedFieldValue
 from src.ui_app import (
+    build_app,
     _render_manage_detail_card,
     _render_manage_details_html,
     _render_markdown_html,
@@ -28,8 +33,31 @@ def _record(index: int) -> DocumentRecord:
     )
 
 
+def _walk_widgets(widget):
+    yield widget
+    for child in getattr(widget, "children", ()):
+        yield from _walk_widgets(child)
+
+
 class UiAppRenderTests(unittest.TestCase):
     """Validate the pure HTML rendering helpers used by the notebook UI."""
+
+    def test_build_app_without_model_credentials_shows_recovery_view(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "config" / "app_config.json"
+            update_json_config_file(config_path, {})
+            config = AppConfig.from_file(config_path)
+            config.ensure_directories()
+
+            app = build_app(config)
+            button_descriptions = {
+                getattr(widget, "description", "")
+                for widget in _walk_widgets(app)
+                if getattr(widget, "description", "")
+            }
+
+            self.assertIn("恢复备份", button_descriptions)
+            self.assertNotIn("导出迁移包", button_descriptions)
 
     def test_manage_details_html_paginates_file_cards(self) -> None:
         records = [_record(index) for index in range(12)]

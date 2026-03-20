@@ -83,7 +83,7 @@ class AppConfig(BaseModel):
     min_chunk_size: int = 400
     batch_concurrency: int = 5
     enable_query_rewrite: bool = True
-    enable_migration_ui: bool = True
+    enable_migration_ui: bool = False
     default_streaming_mode: Literal["stream", "non_stream"] = "stream"
     qa_system_prompt_en: str = DEFAULT_QA_SYSTEM_PROMPT_EN
     qa_system_prompt_zh: str = DEFAULT_QA_SYSTEM_PROMPT_ZH
@@ -202,7 +202,7 @@ class AppConfig(BaseModel):
             min_chunk_size=int(_read_setting(settings, "APP_MIN_CHUNK_SIZE", max(200, chunk_size // 2))),
             batch_concurrency=int(_read_setting(settings, "APP_BATCH_CONCURRENCY", 5)),
             enable_query_rewrite=_read_bool_setting(settings, "APP_ENABLE_QUERY_REWRITE", True),
-            enable_migration_ui=_read_bool_setting(settings, "APP_ENABLE_MIGRATION_UI", True),
+            enable_migration_ui=_read_bool_setting(settings, "APP_ENABLE_MIGRATION_UI", False),
             default_streaming_mode=_read_text_setting(settings, "APP_DEFAULT_STREAMING_MODE", "stream"),
             qa_system_prompt_en=_read_text_setting(settings, "APP_QA_SYSTEM_PROMPT_EN", DEFAULT_QA_SYSTEM_PROMPT_EN),
             qa_system_prompt_zh=_read_text_setting(settings, "APP_QA_SYSTEM_PROMPT_ZH", DEFAULT_QA_SYSTEM_PROMPT_ZH),

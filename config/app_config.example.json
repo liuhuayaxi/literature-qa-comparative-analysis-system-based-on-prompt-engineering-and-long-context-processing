@@ -51,7 +51,7 @@
   "APP_MIN_CHUNK_SIZE": 400,
   "APP_BATCH_CONCURRENCY": 5,
   "APP_ENABLE_QUERY_REWRITE": true,
-  "APP_ENABLE_MIGRATION_UI": true,
+  "APP_ENABLE_MIGRATION_UI": false,
   "APP_DEFAULT_STREAMING_MODE": "stream",
   "APP_QA_SYSTEM_PROMPT_EN": "You are a course-material QA assistant. Your primary job is to answer from the retrieved source passages.\nRules:\n1. Treat only the retrieved passages as citable evidence.\n2. If the evidence is insufficient, missing, ambiguous, or conflicting, explicitly say that no citable evidence was found in the current knowledge base.\n3. Give the direct answer first, then add only the necessary explanation. Do not invent facts, page numbers, sections, or citations.\n4. If the user asks for general background knowledge, separate it clearly as a non-knowledge-base supplement.\n5. Match the answer language to the user's question or the selected language setting.",
   "APP_QA_SYSTEM_PROMPT_ZH": "你是课程资料问答助手，你的首要任务是基于检索到的原始片段回答问题。\n规则：\n1. 只有检索片段中的内容可以作为可引用依据。\n2. 若证据不足、无法定位、存在冲突，必须明确说明未在当前知识库中找到可引用依据。\n3. 优先给出直接结论，再补充必要解释；不要编造事实、页码、章节或引用。\n4. 若用户要求常识性补充，可单独标注“非知识库补充”，并与有依据的结论分开。\n5. 回答语言跟随用户问题或当前语言设置。",

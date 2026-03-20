@@ -47,6 +47,9 @@ def build_app(config: AppConfig):
     except ImportError as exc:  # pragma: no cover - depends on environment.
         raise RuntimeError("ipywidgets is required to render the notebook UI.") from exc
 
+    if not config.has_model_credentials:
+        return _build_recovery_app(widgets, config)
+
     vector_store = VectorStoreService(config)
     session_store = SessionMemoryStore()
     sqlite_store = SQLiteMemoryStore(config.db_path)
@@ -3611,6 +3614,185 @@ def build_app(config: AppConfig):
     _install_log_panel_support(display, HTML, Javascript)
     _schedule(initialize_ui())
     return tabs
+
+
+def _build_recovery_app(widgets, config: AppConfig):
+    restore_bundle_upload = widgets.FileUpload(accept=".zip", multiple=False, description="上传备份包")
+    restore_bundle_path_input = widgets.Text(
+        value="",
+        description="工作区包路径",
+        placeholder="例如 release/migration_backups/backup_xxx.zip",
+        layout=widgets.Layout(width="520px"),
+    )
+    restore_button = widgets.Button(description="恢复备份", button_style="warning")
+    restore_confirm_checkbox = widgets.Checkbox(
+        value=False,
+        description="我已确认恢复会覆盖当前配置和数据文件（日志不会改动）",
+    )
+    restore_status_html = widgets.HTML(
+        value=(
+            "<div style='padding:10px 12px;border:1px solid #fbbf24;border-radius:8px;background:#fffbeb;'>"
+            "<b>当前模型配置未填写完整，已自动进入恢复模式。</b><br>"
+            "请导入之前导出的备份 / 迁移包，恢复有效配置后再重启 Notebook / Kernel。"
+            "</div>"
+        )
+    )
+    restore_output = widgets.Output(
+        layout={
+            "width": "100%",
+            "height": "220px",
+            "max_height": "220px",
+            "overflow": "auto",
+        }
+    )
+    restore_output_panel = widgets.Box(
+        [restore_output],
+        layout=widgets.Layout(
+            border="1px solid #ddd",
+            padding="8px",
+            height="220px",
+            max_height="220px",
+            overflow="auto",
+        ),
+    )
+    restore_output_panel.add_class("assistant-log-panel")
+
+    def _resolve_restore_bundle_path() -> Path:
+        uploads = _normalize_upload_value(restore_bundle_upload.value)
+        if uploads:
+            item = uploads[0]
+            bundle_name = Path(str(item.get("name", "migration_bundle.zip"))).name
+            destination_dir = config.project_root / "release" / "migration_uploads"
+            destination_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            destination = destination_dir / f"{timestamp}_{bundle_name}"
+            content = item.get("content", b"")
+            payload = bytes(content) if not isinstance(content, bytes) else content
+            destination.write_bytes(payload)
+            return destination
+        raw_path = restore_bundle_path_input.value.strip()
+        if not raw_path:
+            raise ValueError("请先上传备份包，或填写工作区中的 zip 路径。")
+        candidate = Path(raw_path).expanduser()
+        if not candidate.is_absolute():
+            candidate = (config.project_root / candidate).resolve(strict=False)
+        return candidate
+
+    def _render_restore_status(title: str, result: dict[str, object], *, note: str = "") -> str:
+        roots = ", ".join(str(item) for item in result.get("roots", [])) or "-"
+        file_count = int(result.get("file_count", 0) or 0)
+        total_size = _human_readable_bytes(int(result.get("total_size_bytes", 0) or 0))
+        bundle_path = str(result.get("bundle_path", ""))
+        backup_path = str(result.get("backup_path", ""))
+        lines = [
+            "<div style='padding:10px 12px;border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;'>",
+            f"<b>{_escape_html(title)}</b><br>",
+            f"包路径: {_escape_html(bundle_path)}<br>",
+            f"包含目录: {_escape_html(roots)}<br>",
+            f"文件数: {file_count} | 总大小: {_escape_html(total_size)}",
+        ]
+        if backup_path:
+            lines.append(f"<br>导入前备份: {_escape_html(backup_path)}")
+        if note:
+            lines.append(f"<br><span style='color:#5b6472;'>{_escape_html(note)}</span>")
+        lines.append("</div>")
+        return "".join(lines)
+
+    def _render_restore_progress(title: str, detail: str = "") -> str:
+        detail_html = (
+            "<div style='margin-top:6px;color:#5b6472;'>"
+            f"{_escape_html(detail)}"
+            "</div>"
+            if detail
+            else ""
+        )
+        return (
+            "<style>"
+            "@keyframes codex-progress-slide {"
+            "0% { transform: translateX(-70%); }"
+            "50% { transform: translateX(80%); }"
+            "100% { transform: translateX(220%); }"
+            "}"
+            "</style>"
+            "<div style='padding:10px 12px;border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;'>"
+            f"<b>{_escape_html(title)}</b>"
+            f"{detail_html}"
+            "<div style='margin-top:10px;height:8px;border-radius:999px;background:#e5e7eb;overflow:hidden;'>"
+            "<div style='width:45%;height:100%;border-radius:999px;background:#2563eb;"
+            "animation:codex-progress-slide 1.2s ease-in-out infinite;'></div>"
+            "</div>"
+            "</div>"
+        )
+
+    async def restore_project_bundle(_):
+        restore_button.disabled = True
+        with restore_output:
+            restore_output.clear_output()
+            try:
+                if not restore_confirm_checkbox.value:
+                    print("恢复会覆盖当前配置和运行数据。请先勾选确认框。")
+                    return
+                bundle_path = _resolve_restore_bundle_path()
+                restore_status_html.value = _render_restore_progress(
+                    "正在校验备份包",
+                    "正在检查 zip 文件和迁移清单。",
+                )
+                print(f"准备读取备份包: {bundle_path}")
+                await asyncio.sleep(0.05)
+                manifest = await asyncio.to_thread(inspect_migration_bundle, bundle_path)
+                print(f"准备恢复备份包: {bundle_path}")
+                print(f"打包时间: {manifest.get('created_at', '-')}")
+                print(f"包含目录: {', '.join(str(item) for item in manifest.get('roots', []))}")
+                print(f"文件数: {manifest.get('file_count', len(manifest.get('files', [])))}")
+                restore_status_html.value = _render_restore_progress(
+                    "正在恢复备份",
+                    "正在自动备份当前数据，并恢复 zip 中的配置与运行数据。",
+                )
+                print("正在自动备份当前数据并恢复备份包...")
+                await asyncio.sleep(0.05)
+                result = await asyncio.to_thread(import_migration_bundle, config, bundle_path)
+                print("恢复完成。")
+                if result.get("backup_path"):
+                    print(f"已自动备份当前数据: {result['backup_path']}")
+                print("请立即重启 Notebook / Kernel，然后重新运行第一个单元。")
+                restore_status_html.value = _render_restore_status(
+                    "备份恢复完成",
+                    result,
+                    note="为了让恢复后的配置和数据库完全生效，请现在重启当前 Notebook / Kernel。",
+                )
+                restore_confirm_checkbox.value = False
+                restore_bundle_path_input.value = ""
+                restore_bundle_upload.value = ()
+                restore_bundle_upload.error = ""
+            except Exception:
+                print("恢复备份失败:")
+                print(traceback.format_exc())
+                restore_status_html.value = (
+                    "<b>恢复失败:</b><pre>"
+                    f"{_escape_html(traceback.format_exc())}"
+                    "</pre>"
+                )
+            finally:
+                restore_button.disabled = False
+
+    restore_button.on_click(lambda _: _schedule(restore_project_bundle(None)))
+
+    return widgets.VBox(
+        [
+            widgets.HTML("<h3 style='margin:0 0 8px 0;'>恢复备份</h3>"),
+            widgets.HTML(
+                "<div style='color:#5b6472;margin-bottom:8px;'>"
+                "当前缺少聊天模型或嵌入模型配置，完整功能已暂时隐藏。"
+                "你可以先恢复备份包，或者手工填写 config/app_config.json 后重启。"
+                "</div>"
+            ),
+            restore_bundle_upload,
+            widgets.HBox([restore_bundle_path_input, restore_button]),
+            restore_confirm_checkbox,
+            restore_status_html,
+            restore_output_panel,
+        ]
+    )
 
 
 def _normalize_upload_value(value):
