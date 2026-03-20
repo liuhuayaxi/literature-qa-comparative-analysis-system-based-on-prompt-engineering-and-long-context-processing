@@ -26,6 +26,19 @@
 
 ## 快速开始
 
+如果远程机器没有管理员权限，推荐直接执行：
+
+```bash
+python3 scripts/setup_user_env.py
+cp config/app_config.example.json config/app_config.json
+```
+
+这个脚本会优先在项目目录下创建 `.venv`，如果失败则自动退回到 `pip install --user`，并注册当前用户可用的 Jupyter 内核，全程不需要 `sudo`。
+
+如果远程环境本身已经提供了 Jupyter，那么也可以直接打开 notebook。第一个代码单元会自动检测缺失依赖，并用 `pip --user` 安装到当前用户环境。
+
+如果你更偏好手工安装，也可以继续使用下面的方式：
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -36,7 +49,7 @@ cp config/app_config.example.json config/app_config.json
 然后在 `config/app_config.json` 中填入你的 API 配置，并启动 Jupyter：
 
 ```bash
-jupyter notebook notebooks/course_research_assistant.ipynb
+.venv/bin/jupyter lab notebooks/course_research_assistant.ipynb
 ```
 
 打开 `notebooks/course_research_assistant.ipynb`，依次运行其中的单元即可启动界面。

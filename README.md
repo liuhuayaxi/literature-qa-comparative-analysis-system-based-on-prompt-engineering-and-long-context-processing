@@ -25,6 +25,19 @@ This repository contains the source-only release of a notebook-based literature 
 
 ## Quick Start
 
+Recommended for remote machines without administrator privileges:
+
+```bash
+python3 scripts/setup_user_env.py
+cp config/app_config.example.json config/app_config.json
+```
+
+The setup script installs dependencies into a project-local `.venv` when possible, falls back to `pip install --user` when needed, and registers a user-scoped Jupyter kernel. No `sudo` is required.
+
+If your remote environment already provides Jupyter, you can also open the notebook directly. The first code cell will automatically install missing Python dependencies into the current user environment with `pip --user`.
+
+Manual setup is still available if you prefer:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -35,7 +48,7 @@ cp config/app_config.example.json config/app_config.json
 Then fill in your API settings in `config/app_config.json` and launch Jupyter:
 
 ```bash
-jupyter notebook notebooks/course_research_assistant.ipynb
+.venv/bin/jupyter lab notebooks/course_research_assistant.ipynb
 ```
 
 Open `notebooks/course_research_assistant.ipynb` and run the notebook cells to start the UI.
