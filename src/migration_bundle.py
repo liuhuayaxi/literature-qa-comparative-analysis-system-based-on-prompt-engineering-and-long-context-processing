@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import zipfile
 from datetime import datetime, timezone
+import errno
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -241,7 +242,7 @@ def _clear_existing_roots(project_root: Path, roots: list[Path]) -> None:
         if not target.exists():
             continue
         if target.is_dir():
-            shutil.rmtree(target)
+            _remove_directory_with_fallback(target)
         else:
             target.unlink()
 
@@ -284,3 +285,32 @@ def _path_contains(parent: Path, child: Path) -> bool:
 
 def _should_skip_bundle_file(relative_path: Path) -> bool:
     return relative_path.suffix.lower() in _EXCLUDED_SUFFIXES
+
+
+def _remove_directory_with_fallback(target: Path) -> None:
+    try:
+        shutil.rmtree(target)
+        return
+    except OSError as exc:
+        if exc.errno != errno.ENOTEMPTY:
+            raise
+    staged = _stage_directory_for_removal(target)
+    try:
+        shutil.rmtree(staged)
+    except OSError:
+        # Some notebook-hosted filesystems can briefly keep a renamed directory
+        # non-empty while handles are being released. Import can continue once
+        # the original path has been freed for extraction.
+        pass
+
+
+def _stage_directory_for_removal(target: Path) -> Path:
+    parent = target.parent
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    candidate = parent / f".{target.name}_migration_replace_{timestamp}"
+    index = 1
+    while candidate.exists():
+        candidate = parent / f".{target.name}_migration_replace_{timestamp}_{index}"
+        index += 1
+    target.rename(candidate)
+    return candidate

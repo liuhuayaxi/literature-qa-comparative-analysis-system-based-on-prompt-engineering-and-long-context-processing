@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import errno
+import shutil
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from src.app_utils import update_json_config_file
 from src.config import AppConfig
 from src.migration_bundle import (
     BUNDLE_MANIFEST_NAME,
+    _clear_existing_roots,
     collect_migration_roots,
     export_migration_bundle,
     import_migration_bundle,
@@ -168,6 +172,31 @@ class MigrationBundleTests(unittest.TestCase):
             import_migration_bundle(target_config, bundle_path)
 
             self.assertFalse((target_config.data_root / "source-course" / "lectures" / "legacy.pdf").exists())
+
+    def test_clear_existing_roots_handles_enotempty_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            target = project_root / "storage" / "chroma"
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "busy.bin").write_text("busy", encoding="utf-8")
+
+            real_rmtree = shutil.rmtree
+            first_call = True
+
+            def flaky_rmtree(path: str | Path, *args: object, **kwargs: object) -> None:
+                nonlocal first_call
+                candidate = Path(path)
+                if first_call and candidate == target:
+                    first_call = False
+                    raise OSError(errno.ENOTEMPTY, "Directory not empty", str(candidate))
+                real_rmtree(path, *args, **kwargs)
+
+            with patch("src.migration_bundle.shutil.rmtree", side_effect=flaky_rmtree):
+                _clear_existing_roots(project_root, [Path("storage/chroma")])
+
+            self.assertFalse(target.exists())
+            staged = list((project_root / "storage").glob(".chroma_migration_replace_*"))
+            self.assertEqual(staged, [])
 
 
 if __name__ == "__main__":
